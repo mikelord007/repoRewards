@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET(_: Request, { params }: { params: { wallet: string } }) {
   const wallet = params.wallet.toLowerCase();
   const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from("users")
     .select("role")
     .eq("wallet_address", wallet)

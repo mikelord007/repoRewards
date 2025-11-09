@@ -39,17 +39,9 @@ export function WalletConnect() {
           }
         }
       } catch {
-        // On error, fallback to role selection
-        const onOnboarding =
-          pathname === "/onboarding/select-role" ||
-          pathname?.startsWith("/contributor/onboarding") ||
-          pathname?.startsWith("/org/onboarding");
-        const onDashboard =
-          pathname?.startsWith("/contributor/dashboard") ||
-          pathname?.startsWith("/org/dashboard");
-        if (!onOnboarding && !onDashboard) {
-          router.push("/onboarding/select-role");
-        }
+        // On error, do not redirect. Stay on current page to avoid false bounces.
+        // eslint-disable-next-line no-console
+        console.warn("User lookup failed; staying on current page.");
       }
     };
     check();
