@@ -1,37 +1,48 @@
-"use client";
-
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider } from "wagmi";
-import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import "@rainbow-me/rainbowkit/styles.css";
-import { config } from "@/lib/wagmi";
-import { useState } from "react";
+import type { Metadata } from "next";
+import { Providers } from "@/components/Providers";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "RepoRewards",
+  description:
+    "Fund open-source contributors using the Optent protocol. Distribute yield from pooled funds to contributors.",
+  icons: {
+    icon: "/repoRewards%20logo.png",
+    shortcut: "/repoRewards%20logo.png",
+    apple: "/repoRewards%20logo.png",
+  },
+  openGraph: {
+    title: "RepoRewards",
+    description:
+      "Fund open-source contributors using the Optent protocol. Distribute yield from pooled funds to contributors.",
+    images: ["/repoRewards%20logo.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RepoRewards",
+    description:
+      "Fund open-source contributors using the Optent protocol. Distribute yield from pooled funds to contributors.",
+    images: ["/repoRewards%20logo.png"],
+  },
+};
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
     <html lang="en">
       <body className={inter.className}>
-        <WagmiProvider config={config}>
-          <QueryClientProvider client={queryClient}>
-            <RainbowKitProvider>
-              <div className="min-h-screen flex flex-col">
-                {children}
-              </div>
-            </RainbowKitProvider>
-          </QueryClientProvider>
-        </WagmiProvider>
+        <Providers>
+          <div className="min-h-screen flex flex-col">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );
 }
-
