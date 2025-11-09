@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "RepoRewards",
   description:
-    "Fund open-source contributors using the Optent protocol. Distribute yield from pooled funds to contributors.",
+    "Fund open-source contributors using the Octant protocol. Distribute yield from pooled funds to contributors.",
   icons: {
     icon: "/repoRewards%20logo.png",
     shortcut: "/repoRewards%20logo.png",
@@ -17,14 +17,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "RepoRewards",
     description:
-      "Fund open-source contributors using the Optent protocol. Distribute yield from pooled funds to contributors.",
+      "Fund open-source contributors using the Octant protocol. Distribute yield from pooled funds to contributors.",
     images: ["/repoRewards%20logo.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "RepoRewards",
     description:
-      "Fund open-source contributors using the Optent protocol. Distribute yield from pooled funds to contributors.",
+      "Fund open-source contributors using the Octant protocol. Distribute yield from pooled funds to contributors.",
     images: ["/repoRewards%20logo.png"],
   },
 };

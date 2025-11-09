@@ -40,7 +40,7 @@ export default function OrgBriefing() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Funds are pooled and deployed via Optent-integrated strategies. Yield generated from the pool is used for rewards.
+                  Funds are pooled and deployed via Octant-integrated strategies. Yield generated from the pool is used for rewards.
                 </p>
               </CardContent>
             </Card>

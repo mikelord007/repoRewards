@@ -1,6 +1,6 @@
 # RepoRewards
 
-A Web3 hackathon project that helps organizations fund open-source contributors using the Optent protocol. The app distributes yield from pooled funds to contributors — similar to a Kickstarter for open-source.
+A Web3 hackathon project that helps organizations fund open-source contributors using the Octant protocol. The app distributes yield from pooled funds to contributors — similar to a Kickstarter for open-source.
 
 ## Tech Stack
 

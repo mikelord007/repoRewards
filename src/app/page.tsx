@@ -13,7 +13,7 @@ export default function Home() {
         <section className="container mx-auto px-4 py-20 text-center">
           <h1 className="text-5xl font-bold mb-4">RepoRewards</h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Fund open-source contributors using the Optent protocol. Distribute
+            Fund open-source contributors using the Octant protocol. Distribute
             yield from pooled funds to contributors — like Kickstarter for
             open-source.
           </p>
