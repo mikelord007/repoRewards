@@ -9,20 +9,48 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { WalletConnect } from "@/components/WalletConnect";
 import { useWallet } from "@/hooks/useWallet";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function OrgOnboarding() {
-  const { isConnected } = useWallet();
+  const router = useRouter();
+  const { isConnected, address } = useWallet();
   const [formData, setFormData] = useState({
-    projectName: "",
-    goal: "",
-    fundingAmount: "",
+    organizationName: "",
+    yieldSource: "aave" as "aave" | "morpho" | "kalani",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock logic
-    console.log("Form submitted:", formData);
-    alert("Onboarding submitted! (Mock)");
+    if (!address) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          role: "organization",
+          organization: {
+            name: formData.organizationName,
+            yieldSource: formData.yieldSource,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || "Failed to onboard");
+      }
+      router.push("/org/dashboard");
+    } catch (err: any) {
+      alert(err.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -32,79 +60,86 @@ export default function OrgOnboarding() {
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">Organization Onboarding</h1>
           <p className="text-muted-foreground mb-8">
-            Create a funding pool for your open-source project
+            Tell us about your organization and preferred yield source
           </p>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Connect Your Wallet</CardTitle>
-              <CardDescription>
-                Connect your wallet to get started
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center mb-6">
-                <WalletConnect />
-              </div>
-              {!isConnected && (
-                <p className="text-sm text-muted-foreground text-center">
-                  Please connect your wallet to continue
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          {isConnected ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Connected Wallet</CardTitle>
+                <CardDescription>
+                  {address}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Connect Your Wallet</CardTitle>
+                <CardDescription>
+                  Connect your wallet to get started
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center mb-6">
+                  <WalletConnect />
+                </div>
+                {!isConnected && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Please connect your wallet to continue
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {isConnected && (
             <Card className="mt-6">
               <CardHeader>
-                <CardTitle>Project Details</CardTitle>
+                <CardTitle>Organization Details</CardTitle>
                 <CardDescription>
-                  Fill in the details for your funding pool
+                  Provide your organization name and yield source
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="projectName">Project Name</Label>
+                    <Label htmlFor="organizationName">Organization Name</Label>
                     <Input
-                      id="projectName"
-                      placeholder="My Awesome Project"
-                      value={formData.projectName}
+                      id="organizationName"
+                      placeholder="Your Organization Inc."
+                      value={formData.organizationName}
                       onChange={(e) =>
-                        setFormData({ ...formData, projectName: e.target.value })
+                        setFormData({ ...formData, organizationName: e.target.value })
                       }
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="goal">Goal</Label>
-                    <Input
-                      id="goal"
-                      placeholder="e.g., $50,000"
-                      value={formData.goal}
+                    <Label htmlFor="yieldSource">Yield Source</Label>
+                    <select
+                      id="yieldSource"
+                      className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm"
+                      value={formData.yieldSource}
                       onChange={(e) =>
-                        setFormData({ ...formData, goal: e.target.value })
+                        setFormData({ ...formData, yieldSource: e.target.value as any })
                       }
                       required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fundingAmount">Funding Pool Amount</Label>
-                    <Input
-                      id="fundingAmount"
-                      placeholder="e.g., $10,000"
-                      value={formData.fundingAmount}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          fundingAmount: e.target.value,
-                        })
-                      }
-                      required
-                    />
+                    >
+                      <option value="aave">Aave</option>
+                      <option value="morpho">Morpho</option>
+                      <option value="kalani">Kalani</option>
+                    </select>
                   </div>
                   <Button type="submit" className="w-full">
-                    Create Funding Pool
+                    {isSubmitting ? (
+                      <span className="inline-flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Completing...
+                      </span>
+                    ) : (
+                      "Complete Onboarding"
+                    )}
                   </Button>
                 </form>
               </CardContent>

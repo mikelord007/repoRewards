@@ -19,18 +19,6 @@ export function Navbar() {
           <span className="text-2xl font-bold">RepoRewards</span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link
-            href="/org/dashboard"
-            className="text-sm font-medium hover:text-primary"
-          >
-            For Organizations
-          </Link>
-          <Link
-            href="/contributor/dashboard"
-            className="text-sm font-medium hover:text-primary"
-          >
-            For Contributors
-          </Link>
           <WalletConnect />
         </div>
       </div>

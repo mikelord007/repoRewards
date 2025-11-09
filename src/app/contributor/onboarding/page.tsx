@@ -10,11 +10,15 @@ import { Button } from "@/components/ui/button";
 import { WalletConnect } from "@/components/WalletConnect";
 import { useWallet } from "@/hooks/useWallet";
 import { Github } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function ContributorOnboarding() {
-  const { isConnected } = useWallet();
+  const router = useRouter();
+  const { isConnected, address } = useWallet();
   const [githubUsername, setGithubUsername] = useState("");
   const [isGithubConnected, setIsGithubConnected] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleGithubConnect = () => {
     // Mock GitHub OAuth flow
@@ -22,15 +26,36 @@ export default function ContributorOnboarding() {
     alert("GitHub connected! (Mock)");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isGithubConnected || !githubUsername) {
       alert("Please connect GitHub and enter your username");
       return;
     }
-    // Mock logic
-    console.log("Contributor registered:", githubUsername);
-    alert("Registration successful! (Mock)");
+    if (!address) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          role: "contributor",
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || "Failed to register");
+      }
+      router.push("/contributor/dashboard");
+    } catch (err: any) {
+      alert(err.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -102,8 +127,15 @@ export default function ContributorOnboarding() {
                           required
                         />
                       </div>
-                      <Button type="submit" className="w-full">
-                        Register as Contributor
+                      <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <span className="inline-flex items-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Registering...
+                          </span>
+                        ) : (
+                          "Register as Contributor"
+                        )}
                       </Button>
                     </form>
                   )}
