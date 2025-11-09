@@ -7,8 +7,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { mockFundingPools } from "@/lib/mockData";
 import { Plus } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@/hooks/useWallet";
 
 export default function OrgDashboard() {
+  const router = useRouter();
+  const { isConnected, address } = useWallet();
+  const checked = useRef<string | null>(null);
+
+  useEffect(() => {
+    const verify = async () => {
+      if (!isConnected || !address) return;
+      const lower = address.toLowerCase();
+      if (checked.current === lower) return;
+      checked.current = lower;
+      try {
+        const res = await fetch(`/api/users/${lower}`, { cache: "no-store" });
+        const data = await res.json();
+        if (!data?.exists) {
+          router.replace("/org/onboarding");
+          return;
+        }
+        if (data?.role !== "organization") {
+          router.replace("/onboarding/select-role");
+        }
+      } catch {
+        // stay on page if lookup fails
+      }
+    };
+    verify();
+  }, [isConnected, address, router]);
+
   return (
     <>
       <Navbar />

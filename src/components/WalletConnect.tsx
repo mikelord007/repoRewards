@@ -20,6 +20,7 @@ export function WalletConnect() {
       try {
         const res = await fetch(`/api/users/${lower}`, { cache: "no-store" });
         const data = await res.json();
+        console.log("data is", data);
         if (data?.exists && data?.role === "contributor") {
           router.push("/contributor/dashboard");
         } else if (data?.exists && data?.role === "organization") {

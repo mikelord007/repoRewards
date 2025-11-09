@@ -4,32 +4,56 @@ import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { WalletConnect } from "@/components/WalletConnect";
 import { useWallet } from "@/hooks/useWallet";
 import { Github } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function ContributorOnboarding() {
   const router = useRouter();
   const { isConnected, address } = useWallet();
-  const [githubUsername, setGithubUsername] = useState("");
   const [isGithubConnected, setIsGithubConnected] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   const handleGithubConnect = () => {
-    // Mock GitHub OAuth flow
-    setIsGithubConnected(true);
-    alert("GitHub connected! (Mock)");
+    if (!address) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    window.location.href = `/api/github/login?wallet=${address}`;
   };
+
+  // When returning from OAuth, or when wallet connects, fetch profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!address) return;
+      const res = await fetch(`/api/contributors/${address.toLowerCase()}`, { cache: "no-store" });
+      const json = await res.json();
+      const p = json?.profile;
+      if (p?.login) {
+        setIsGithubConnected(true);
+        setProfileName(p.name || p.login);
+        setProfileAvatar(p.avatar_url || null);
+      }
+    };
+    if (isConnected) {
+      const ghConnected = searchParams.get("github") === "connected";
+      if (ghConnected) fetchProfile();
+      // Also try once on connect
+      fetchProfile();
+    }
+  }, [isConnected, address, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isGithubConnected || !githubUsername) {
-      alert("Please connect GitHub and enter your username");
+    if (!isGithubConnected) {
+      alert("Please connect GitHub first");
       return;
     }
     if (!address) {
@@ -65,30 +89,10 @@ export default function ContributorOnboarding() {
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">Contributor Onboarding</h1>
           <p className="text-muted-foreground mb-8">
-            Connect your wallet and GitHub to start earning rewards
+            Connect your GitHub to get started
           </p>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Connect Your Wallet</CardTitle>
-              <CardDescription>
-                Connect your wallet to receive rewards
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center mb-6">
-                <WalletConnect />
-              </div>
-              {!isConnected && (
-                <p className="text-sm text-muted-foreground text-center">
-                  Please connect your wallet to continue
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {isConnected && (
-            <Card className="mt-6">
+          <Card className="mt-0">
               <CardHeader>
                 <CardTitle>Connect GitHub</CardTitle>
                 <CardDescription>
@@ -108,41 +112,33 @@ export default function ContributorOnboarding() {
                       Connect GitHub
                     </Button>
                   ) : (
-                    <div className="p-4 bg-green-900/20 rounded-md border border-green-800">
+                    <div className="p-4 bg-green-900/20 rounded-md border border-green-800 flex items-center gap-3">
+                      {profileAvatar && (
+                        <img src={profileAvatar} alt="GitHub avatar" className="h-8 w-8 rounded-full" />
+                      )}
                       <p className="text-sm text-green-200">
-                        ✓ GitHub connected
+                        ✓ GitHub connected{profileName ? `: ${profileName}` : ""}
                       </p>
                     </div>
                   )}
 
                   {isGithubConnected && (
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="githubUsername">GitHub Username</Label>
-                        <Input
-                          id="githubUsername"
-                          placeholder="your-username"
-                          value={githubUsername}
-                          onChange={(e) => setGithubUsername(e.target.value)}
-                          required
-                        />
-                      </div>
                       <Button type="submit" className="w-full" disabled={isSubmitting}>
                         {isSubmitting ? (
                           <span className="inline-flex items-center">
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Registering...
+                            Continuing...
                           </span>
                         ) : (
-                          "Register as Contributor"
+                          "Continue"
                         )}
                       </Button>
                     </form>
                   )}
                 </div>
               </CardContent>
-            </Card>
-          )}
+          </Card>
         </div>
       </main>
       <Footer />

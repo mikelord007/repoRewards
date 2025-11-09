@@ -91,3 +91,39 @@ src/
 - All contract interactions are currently mocked
 - Ready for integration with backend/contracts repo
 
+## GitHub OAuth (Contributors)
+
+Environment variables (set in `.env.local`):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+GITHUB_OAUTH_STATE_SECRET=replace_with_random_32_bytes_hex_or_base64
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+Supabase schema (run in SQL editor):
+
+```
+-- contributor_profiles table
+create table if not exists public.contributor_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade unique,
+  github_id bigint not null unique,
+  login text not null,
+  name text,
+  avatar_url text,
+  html_url text,
+  created_at timestamptz not null default now()
+);
+alter table public.contributor_profiles enable row level security;
+```
+
+Flow:
+- On `Contributor Onboarding`, “Connect GitHub” sends the user to `/api/github/login` which redirects to GitHub.
+- Callback at `/api/github/callback` exchanges the code, fetches the profile, upserts `users` (by wallet) and `contributor_profiles`, then redirects back to onboarding.
+- The page fetches `/api/contributors/{wallet}` and shows GitHub name/avatar.
+

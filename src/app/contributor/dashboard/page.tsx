@@ -6,8 +6,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { mockContributions } from "@/lib/mockData";
 import { CheckCircle2, Clock } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@/hooks/useWallet";
 
 export default function ContributorDashboard() {
+  const router = useRouter();
+  const { isConnected, address } = useWallet();
+  const checked = useRef<string | null>(null);
+
+  useEffect(() => {
+    const verify = async () => {
+      if (!isConnected || !address) return;
+      const lower = address.toLowerCase();
+      if (checked.current === lower) return;
+      checked.current = lower;
+      try {
+        const res = await fetch(`/api/users/${lower}`, { cache: "no-store" });
+        const data = await res.json();
+        if (!data?.exists) {
+          router.replace("/contributor/onboarding");
+          return;
+        }
+        if (data?.role !== "contributor") {
+          router.replace("/onboarding/select-role");
+        }
+      } catch {
+        // stay on page if lookup fails
+      }
+    };
+    verify();
+  }, [isConnected, address, router]);
+
   const handleClaim = (id: string) => {
     // Mock claim logic
     console.log("Claiming reward:", id);
