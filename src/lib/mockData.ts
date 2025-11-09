@@ -6,6 +6,7 @@ export interface FundingPool {
   yieldDistributed: string;
   contributors: number;
   createdAt: string;
+  repo?: string;
 }
 
 export interface Contribution {
@@ -26,6 +27,7 @@ export const mockFundingPools: FundingPool[] = [
     yieldDistributed: "$2,100",
     contributors: 12,
     createdAt: "2024-01-15",
+    repo: "https://github.com/reporewards/web3-infrastructure",
   },
   {
     id: "2",
@@ -35,6 +37,17 @@ export const mockFundingPools: FundingPool[] = [
     yieldDistributed: "$5,400",
     contributors: 28,
     createdAt: "2024-02-01",
+    repo: "https://github.com/reporewards/defi-protocol",
+  },
+  {
+    id: "3",
+    name: "Developer Tooling",
+    goal: "$40,000",
+    totalFunds: "$15,600",
+    yieldDistributed: "$1,250",
+    contributors: 9,
+    createdAt: "2024-03-10",
+    repo: "https://github.com/reporewards/dev-tooling",
   },
 ];
 

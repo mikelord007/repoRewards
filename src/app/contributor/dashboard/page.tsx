@@ -24,12 +24,9 @@ export default function ContributorDashboard() {
       try {
         const res = await fetch(`/api/users/${lower}`, { cache: "no-store" });
         const data = await res.json();
-        if (!data?.exists) {
-          router.replace("/contributor/onboarding");
-          return;
-        }
-        if (data?.role !== "contributor") {
+        if (!data?.exists || data?.role !== "contributor") {
           router.replace("/onboarding/select-role");
+          return;
         }
       } catch {
         // stay on page if lookup fails
