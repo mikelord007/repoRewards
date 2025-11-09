@@ -18,13 +18,13 @@ export default function Home() {
             open-source.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link href="/org/onboarding">
+            <Link href="/org/briefing">
               <Button size="lg">
                 For Organizations
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/contributor/onboarding">
+            <Link href="/contributor/briefing">
               <Button variant="outline" size="lg">
                 For Contributors
                 <ArrowRight className="ml-2 h-4 w-4" />
