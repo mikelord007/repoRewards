@@ -6,7 +6,7 @@ export async function GET(_: Request, { params }: { params: { wallet: string } }
   const supabaseAdmin = getSupabaseAdmin();
   let { data, error } = await supabaseAdmin
     .from("users")
-    .select("role")
+    .select("id,role")
     .eq("wallet_address", wallet)
     .maybeSingle();
 
