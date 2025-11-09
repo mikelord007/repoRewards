@@ -5,8 +5,8 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockFundingPools } from "@/lib/mockData";
-import { Github } from "lucide-react";
+import { mockFundingPools, mockContributions } from "@/lib/mockData";
+import { Github, Info } from "lucide-react";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/hooks/useWallet";
@@ -73,6 +73,17 @@ export default function OrgDashboard() {
 
   const formatMoney = (n: number) =>
     `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const parseMoney = (s: string) => {
+    if (!s) return 0;
+    const num = parseFloat(String(s).replace(/[^0-9.]/g, ""));
+    return isFinite(num) ? num : 0;
+  };
+
+  const totalPayoutUsd = useMemo(
+    () => allocations.reduce((sum, a) => sum + parseMoney(a.yieldDistributed), 0),
+    [allocations]
+  );
 
   const setAllocationAmount = (id: string, nextAmountRaw: number) => {
     const total = totalVaultUsd;
@@ -149,6 +160,8 @@ export default function OrgDashboard() {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectRepo, setNewProjectRepo] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDistributeModal, setShowDistributeModal] = useState(false);
+  const [distributeStep, setDistributeStep] = useState<"Harvest" | "Allocate">("Harvest");
 
   const addProjectDirect = (name: string, repoUrl: string) => {
     const n = name.trim();
@@ -203,6 +216,29 @@ export default function OrgDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
                 <p className="text-3xl font-bold">{formatMoney(totalVaultUsd)}</p>
+                <div className="mt-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Contributor Payout</span>
+                    <span className="hover:text-primary cursor-pointer" title="Yield from vault principal; distributed to contributors">
+                      <Info
+                        className="h-4 w-4"
+                      />
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-3">
+                    <p className="text-lg font-semibold">{formatMoney(totalPayoutUsd)}</p>
+                    <Button
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setDistributeStep("Harvest");
+                        setShowDistributeModal(true);
+                      }}
+                    >
+                      Distribute
+                    </Button>
+                  </div>
+                </div>
               </div>
               <form onSubmit={handleDeposit} className="flex items-center gap-3 w-full md:w-auto">
                 <Input
@@ -373,6 +409,91 @@ export default function OrgDashboard() {
                     <Button type="submit">Add Project</Button>
                   </div>
                 </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        {showDistributeModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-2xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Distribute Yield</CardTitle>
+                    <CardDescription>Harvest and allocate yield to contributors</CardDescription>
+                  </div>
+                  <Button variant="ghost" onClick={() => setShowDistributeModal(false)}>
+                    Close
+                  </Button>
+                </div>
+                <div className="mt-4 inline-flex rounded-md border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setDistributeStep("Harvest")}
+                    className={`px-4 py-2 text-sm ${distributeStep === "Harvest" ? "bg-accent text-accent-foreground" : "bg-background"}`}
+                  >
+                    Harvest
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDistributeStep("Allocate")}
+                    className={`px-4 py-2 text-sm border-l ${distributeStep === "Allocate" ? "bg-accent text-accent-foreground" : "bg-background"}`}
+                  >
+                    Allocate
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {distributeStep === "Harvest" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Amount to harvest</p>
+                      <p className="text-2xl font-semibold">{formatMoney(totalPayoutUsd)}</p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setShowDistributeModal(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={() => setDistributeStep("Allocate")}>
+                        Harvest Now
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Allocate harvested yield to contributors</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="text-muted-foreground">
+                          <tr className="border-b">
+                            <th className="text-left py-2 pr-3">Contributor</th>
+                            <th className="text-left py-2 pr-3">Repository</th>
+                            <th className="text-left py-2 pr-3">Reference</th>
+                            <th className="text-left py-2">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mockContributions.map((c) => (
+                            <tr key={c.id} className="border-b last:border-0">
+                              <td className="py-2 pr-3">{`Contributor ${c.id}`}</td>
+                              <td className="py-2 pr-3">{c.repository}</td>
+                              <td className="py-2 pr-3">{c.pullRequest}</td>
+                              <td className="py-2">{c.amount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setDistributeStep("Harvest")}>
+                        Back
+                      </Button>
+                      <Button onClick={() => setShowDistributeModal(false)}>Confirm Allocation</Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
