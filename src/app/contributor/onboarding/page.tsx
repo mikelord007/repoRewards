@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ContributorOnboarding() {
+function ContributorOnboardingInner() {
   const router = useRouter();
   const { isConnected, address } = useWallet();
   const [isGithubConnected, setIsGithubConnected] = useState(false);
@@ -143,6 +143,14 @@ export default function ContributorOnboarding() {
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function ContributorOnboarding() {
+  return (
+    <Suspense fallback={null}>
+      <ContributorOnboardingInner />
+    </Suspense>
   );
 }
 

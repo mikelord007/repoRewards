@@ -10,12 +10,25 @@ import { Github, Info } from "lucide-react";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/hooks/useWallet";
+import { usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { repoRewardsAbi } from "@/abi/RepoRewards";
+import { erc20Abi } from "@/abi/erc20";
+import { parseUnits, formatUnits } from "viem";
+import { REPO_REWARDS_ADDRESS } from "@/lib/contracts";
 
 export default function OrgDashboard() {
   const router = useRouter();
   const { isConnected, address } = useWallet();
   const checked = useRef<string | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [orgId, setOrgId] = useState<number | null>(null);
+  const [orgToken, setOrgToken] = useState<`0x${string}` | null>(null);
+  const [pendingHash, setPendingHash] = useState<`0x${string}` | undefined>(undefined);
+ 
+  const [vaultPrincipal, setVaultPrincipal] = useState<bigint | null>(null);
+  const [vaultDecimals, setVaultDecimals] = useState<number | null>(null);
+  const [vaultSymbol, setVaultSymbol] = useState<string | null>(null);
 
   type Allocation = {
     id: string;
@@ -36,6 +49,35 @@ export default function OrgDashboard() {
       next.add(id);
       return next;
     });
+  };
+
+  const publicClient = usePublicClient();
+  const { writeContractAsync } = useWriteContract();
+  const { isLoading: isTxPending } = useWaitForTransactionReceipt({ hash: pendingHash });
+
+  // Helper: fetch principal and token metadata for display
+  const fetchPrincipalFor = async (id: number, tokenAddr: `0x${string}`) => {
+    if (!publicClient) return;
+    try {
+      const org = (await publicClient.readContract({
+        address: REPO_REWARDS_ADDRESS,
+        abi: repoRewardsAbi,
+        functionName: "getOrganization",
+        args: [BigInt(id)],
+      })) as any;
+      const principal = (org?.totalPrincipal || org?.[4]) as bigint | undefined;
+      if (typeof principal === "bigint") {
+        setVaultPrincipal(principal);
+      }
+      const [dec, sym] = await Promise.all([
+        publicClient.readContract({ address: tokenAddr, abi: erc20Abi, functionName: "decimals" }) as Promise<number>,
+        publicClient.readContract({ address: tokenAddr, abi: erc20Abi, functionName: "symbol" }) as Promise<string>,
+      ]);
+      setVaultDecimals(dec);
+      setVaultSymbol(sym);
+    } catch {
+      // ignore fetch errors
+    }
   };
 
   useEffect(() => {
@@ -59,14 +101,77 @@ export default function OrgDashboard() {
         } else {
           setAllocations([]);
         }
+        // Discover orgId by scanning organizations for management == address
+        if (publicClient) {
+          const count = (await publicClient.readContract({
+            address: REPO_REWARDS_ADDRESS,
+            abi: repoRewardsAbi,
+            functionName: "getOrganizationCount",
+            args: [],
+          })) as bigint;
+          let foundId: number | null = null;
+          let tokenAddr: `0x${string}` | null = null;
+          for (let i = BigInt(0); i < count; i = i + BigInt(1)) {
+            const org = (await publicClient.readContract({
+              address: REPO_REWARDS_ADDRESS,
+              abi: repoRewardsAbi,
+              functionName: "getOrganization",
+              args: [i],
+            })) as any;
+            const management = (org?.management || org?.[3]) as `0x${string}` | undefined;
+            const token = (org?.token || org?.[2]) as `0x${string}` | undefined;
+            if (management && management.toLowerCase() === lower) {
+              foundId = Number(i);
+              tokenAddr = token ?? null;
+              break;
+            }
+          }
+          setOrgId(foundId);
+          setOrgToken(tokenAddr);
+          // Fetch live principal and token meta
+          if (foundId !== null && tokenAddr) {
+            const org = (await publicClient.readContract({
+              address: REPO_REWARDS_ADDRESS,
+              abi: repoRewardsAbi,
+              functionName: "getOrganization",
+              args: [BigInt(foundId)],
+            })) as any;
+            const principal = (org?.totalPrincipal || org?.[4]) as bigint | undefined;
+            setVaultPrincipal(typeof principal === "bigint" ? principal : null);
+            try {
+              const [dec, sym] = await Promise.all([
+                publicClient.readContract({ address: tokenAddr, abi: erc20Abi, functionName: "decimals" }) as Promise<number>,
+                publicClient.readContract({ address: tokenAddr, abi: erc20Abi, functionName: "symbol" }) as Promise<string>,
+              ]);
+              setVaultDecimals(dec);
+              setVaultSymbol(sym);
+            } catch {
+              setVaultDecimals(18);
+              setVaultSymbol("TOKEN");
+            }
+          } else {
+            setVaultPrincipal(null);
+            setVaultDecimals(null);
+            setVaultSymbol(null);
+          }
+        }
       } catch {
         // stay on page if lookup fails
       }
     };
     verify();
-  }, [isConnected, address, router]);
+  }, [isConnected, address, router, publicClient]);
 
-  // Temporary fixed vault balance
+  // Format vault principal for display
+  const formatVault = () => {
+    if (vaultPrincipal == null) return "—";
+    const d = vaultDecimals ?? 18;
+    const human = Number(formatUnits(vaultPrincipal, d));
+    const sym = vaultSymbol ?? "";
+    return `${human.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ${sym}`;
+  };
+
+  // Allocation module still references a fixed total for now
   const totalVaultUsd = 100400;
 
   const formatMoney = (n: number) =>
@@ -133,15 +238,52 @@ export default function OrgDashboard() {
     });
   };
 
-  const handleDeposit = (e: React.FormEvent) => {
+  const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!depositAmount) {
-      alert("Enter an amount to deposit");
+    if (!address || !isConnected) {
+      alert("Connect wallet first");
       return;
     }
-    // Mock deposit action
-    alert(`Deposited $${depositAmount} to vault (Mock)`);
-    setDepositAmount("");
+    if (orgId === null || !orgToken) {
+      alert("No organization found for this wallet");
+      return;
+    }
+    if (!depositAmount || Number(depositAmount) <= 0) {
+      alert("Enter an amount greater than 0");
+      return;
+    }
+    try {
+      setIsDepositing(true);
+      // get token decimals
+      const decimals = (await publicClient?.readContract({
+        address: orgToken,
+        abi: erc20Abi,
+        functionName: "decimals",
+      })) as number;
+      const amount = parseUnits(depositAmount, decimals ?? 18);
+      // approve
+      const approveHash = await writeContractAsync({
+        address: orgToken,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [REPO_REWARDS_ADDRESS, amount],
+      });
+      setPendingHash(approveHash);
+      // Wait by hook state; simple polling delay
+      // After approval, call addPrincipal
+      const addHash = await writeContractAsync({
+        address: REPO_REWARDS_ADDRESS,
+        abi: repoRewardsAbi,
+        functionName: "addPrincipal",
+        args: [BigInt(orgId), amount],
+      });
+      setPendingHash(addHash);
+      setDepositAmount("");
+    } catch (err: any) {
+      alert(err?.shortMessage || err?.message || "Deposit failed");
+    } finally {
+      setIsDepositing(false);
+    }
   };
 
   const handleSaveAllocations = () => {
@@ -195,6 +337,24 @@ export default function OrgDashboard() {
     addProjectDirect(newProjectName, newProjectRepo);
   };
 
+  // Refresh principal right after a tx is mined
+  useEffect(() => {
+    if (!isTxPending && pendingHash && orgId !== null && orgToken) {
+      fetchPrincipalFor(orgId, orgToken);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTxPending, pendingHash]);
+
+  // Poll principal regularly
+  useEffect(() => {
+    if (orgId === null || !orgToken) return;
+    const id = setInterval(() => {
+      fetchPrincipalFor(orgId, orgToken);
+    }, 10000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, orgToken]);
+
   return (
     <>
       <Navbar />
@@ -213,7 +373,7 @@ export default function OrgDashboard() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-3xl font-bold">{formatMoney(totalVaultUsd)}</p>
+                <p className="text-3xl font-bold">{formatVault()}</p>
                 <div className="mt-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>Contributor Payout</span>
@@ -243,12 +403,14 @@ export default function OrgDashboard() {
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="Amount (USD)"
+                  placeholder="Amount (token units)"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                   className="w-full md:w-56"
                 />
-                <Button type="submit">Deposit</Button>
+                <Button type="submit" disabled={!isConnected || orgId === null || !orgToken || isDepositing || isTxPending}>
+                  {isDepositing || isTxPending ? "Depositing..." : "Deposit"}
+                </Button>
               </form>
             </div>
           </CardContent>

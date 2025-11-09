@@ -9,7 +9,7 @@ export const tenderlyChain = defineChain({
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
     default: {
-      http: ["https://virtual.mainnet.eu.rpc.tenderly.co/418c4044-1824-4f17-88fd-3541421b25c6"],
+      http: ["https://virtual.mainnet.eu.rpc.tenderly.co/5405bc8a-e533-412a-af01-e7d60a3ccd57"],
     },
   },
   blockExplorers: {
@@ -26,7 +26,7 @@ export const config = getDefaultConfig({
   projectId: "YOUR_PROJECT_ID", // Replace with your WalletConnect project ID
   chains: [tenderlyChain, sepolia],
   transports: {
-    [tenderlyChain.id]: http("https://virtual.mainnet.eu.rpc.tenderly.co/418c4044-1824-4f17-88fd-3541421b25c6"),
+    [tenderlyChain.id]: http("https://virtual.mainnet.eu.rpc.tenderly.co/5405bc8a-e533-412a-af01-e7d60a3ccd57"),
     [sepolia.id]: http(), // default
   },
   ssr: true,

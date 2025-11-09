@@ -15,6 +15,7 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { isAddress } from "viem";
 import { repoRewardsAbi } from "@/abi/RepoRewards";
 import { tenderlyChain } from "@/lib/wagmi";
+import { REPO_REWARDS_ADDRESS } from "@/lib/contracts";
 
 export default function OrgOnboarding() {
   const router = useRouter();
@@ -26,8 +27,6 @@ export default function OrgOnboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegisteredOnchain, setIsRegisteredOnchain] = useState(false);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
-
-  const REPO_REWARDS_ADDRESS = "0x94E2E71aA65aD486f697D764b63E848Da5aB4Db7" as const;
 
   const { writeContractAsync } = useWriteContract();
   const { isLoading: isWaitingReceipt, isSuccess: isMined } = useWaitForTransactionReceipt({
