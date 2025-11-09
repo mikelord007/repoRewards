@@ -111,18 +111,26 @@ export default function ContributorDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                {contribution.status === "pending" ? (
-                  <Button
-                    onClick={() => handleClaim(contribution.id)}
-                    className="w-full"
-                  >
-                    Claim Reward
-                  </Button>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Claimed on {contribution.claimedAt}
-                  </p>
-                )}
+                {contribution.status === "pending"
+                  ? contribution.id === "2"
+                    ? (
+                      <p className="text-sm text-muted-foreground">
+                        Pending. Claim will be available soon.
+                      </p>
+                    )
+                    : (
+                      <Button
+                        onClick={() => handleClaim(contribution.id)}
+                        className="w-full"
+                      >
+                        Claim Reward
+                      </Button>
+                    )
+                  : (
+                    <p className="text-sm text-muted-foreground">
+                      Claimed on {contribution.claimedAt}
+                    </p>
+                  )}
               </CardContent>
             </Card>
           ))}

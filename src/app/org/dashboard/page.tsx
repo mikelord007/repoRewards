@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockFundingPools, mockContributions } from "@/lib/mockData";
+import { mockContributions } from "@/lib/mockData";
 import { Github, Info } from "lucide-react";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,17 +26,7 @@ export default function OrgDashboard() {
     contributors: number;
     repo?: string;
   };
-  const [allocations, setAllocations] = useState<Allocation[]>(() =>
-    mockFundingPools.map((p) => ({
-      id: p.id,
-      name: p.name,
-      amount: parseFloat(p.totalFunds.replace(/[^0-9.]/g, "")) || 0,
-      goal: p.goal,
-      yieldDistributed: p.yieldDistributed,
-      contributors: p.contributors,
-      repo: p.repo,
-    }))
-  );
+  const [allocations, setAllocations] = useState<Allocation[]>([]);
   // Track which sliders/allocations the user has explicitly adjusted
   const [touchedIds, setTouchedIds] = useState<Set<string>>(new Set());
   const markTouched = (id: string) => {
@@ -60,6 +50,14 @@ export default function OrgDashboard() {
         if (!data?.exists || data?.role !== "organization") {
           router.replace("/onboarding/select-role");
           return;
+        }
+        // Fetch projects once role is confirmed organization
+        const projRes = await fetch(`/api/org/projects/${lower}`, { cache: "no-store" });
+        const projJson = await projRes.json();
+        if (Array.isArray(projJson?.projects)) {
+          setAllocations(projJson.projects);
+        } else {
+          setAllocations([]);
         }
       } catch {
         // stay on page if lookup fails

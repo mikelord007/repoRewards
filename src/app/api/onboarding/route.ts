@@ -11,7 +11,7 @@ type OnboardingBody =
       role: "organization";
       organization: {
         name: string;
-        yieldSource: "aave" | "morpho" | "kalani";
+        yieldSource: string;
       };
     };
 

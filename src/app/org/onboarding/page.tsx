@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,15 +11,64 @@ import { WalletConnect } from "@/components/WalletConnect";
 import { useWallet } from "@/hooks/useWallet";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { isAddress } from "viem";
+import { repoRewardsAbi } from "@/abi/RepoRewards";
+import { tenderlyChain } from "@/lib/wagmi";
 
 export default function OrgOnboarding() {
   const router = useRouter();
   const { isConnected, address } = useWallet();
   const [formData, setFormData] = useState({
     organizationName: "",
-    yieldSource: "aave" as "aave" | "morpho" | "kalani",
+    yieldSource: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegisteredOnchain, setIsRegisteredOnchain] = useState(false);
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+
+  const REPO_REWARDS_ADDRESS = "0x94E2E71aA65aD486f697D764b63E848Da5aB4Db7" as const;
+
+  const { writeContractAsync } = useWriteContract();
+  const { isLoading: isWaitingReceipt, isSuccess: isMined } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  useEffect(() => {
+    if (isMined) {
+      setIsRegisteredOnchain(true);
+    }
+  }, [isMined]);
+
+  const canRegister = useMemo(() => {
+    return (
+      isConnected &&
+      !!address &&
+      !!formData.organizationName.trim() &&
+      isAddress(formData.yieldSource as `0x${string}`)
+    );
+  }, [isConnected, address, formData.organizationName, formData.yieldSource]);
+
+  const handleRegisterOnchain = async () => {
+    if (!canRegister) return;
+    try {
+      const hash = await writeContractAsync({
+        address: REPO_REWARDS_ADDRESS,
+        abi: repoRewardsAbi,
+        functionName: "registerOrganization",
+        args: [
+          formData.yieldSource as `0x${string}`,
+          address as `0x${string}`,
+          formData.organizationName,
+        ],
+        chainId: tenderlyChain.id,
+      });
+      setTxHash(hash);
+    } catch (err: any) {
+      alert(err?.shortMessage || err?.message || "Failed to send transaction");
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,30 +166,51 @@ export default function OrgOnboarding() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="yieldSource">Yield Source</Label>
-                    <select
+                    <Input
                       id="yieldSource"
-                      className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm"
+                      placeholder="0x..."
                       value={formData.yieldSource}
                       onChange={(e) =>
-                        setFormData({ ...formData, yieldSource: e.target.value as any })
+                        setFormData({ ...formData, yieldSource: e.target.value })
                       }
                       required
-                    >
-                      <option value="aave">Aave</option>
-                      <option value="morpho">Morpho</option>
-                      <option value="kalani">Kalani</option>
-                    </select>
+                    />
                   </div>
-                  <Button type="submit" className="w-full">
-                    {isSubmitting ? (
-                      <span className="inline-flex items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Completing...
-                      </span>
-                    ) : (
-                      "Complete Onboarding"
-                    )}
-                  </Button>
+                  {!isRegisteredOnchain ? (
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        type="button"
+                        className="w-full"
+                        disabled={!canRegister || isWaitingReceipt}
+                        onClick={handleRegisterOnchain}
+                      >
+                        {isWaitingReceipt ? (
+                          <span className="inline-flex items-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Registering onchain...
+                          </span>
+                        ) : (
+                          "Register Organization onchain"
+                        )}
+                      </Button>
+                      {!!txHash && (
+                        <span className="text-xs text-muted-foreground">
+                          Tx: {txHash.slice(0, 10)}...
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white">
+                      {isSubmitting ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Completing...
+                        </span>
+                      ) : (
+                        "Complete Onboarding"
+                      )}
+                    </Button>
+                  )}
                 </form>
               </CardContent>
             </Card>
